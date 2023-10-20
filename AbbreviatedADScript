@@ -1,0 +1,54 @@
+import json
+import ldap3
+from ldap3 import Server, Connection, ALL, NTLM
+from ldap3.protocol.formatters.formatters import format_sid
+
+# Replace these variables with your own values
+ldap_server = 'your.ldap.server'
+ldap_username = 'your_username@your_domain'
+ldap_password = 'your_password'
+
+# Connect to the LDAP server
+server = Server(ldap_server, get_info=ALL)
+connection = Connection(server, user=ldap_username, password=ldap_password, authentication=NTLM)
+
+if not connection.bind():
+    print("Error connecting to the LDAP server")
+    exit(1)
+
+# Define the search parameters
+search_base = 'DC=your_domain,DC=com'
+search_filter = '(objectClass=*)'
+search_attributes = ['distinguishedName', 'ntSecurityDescriptor']
+
+# Search for the objects in the domain
+connection.search(search_base=search_base, search_filter=search_filter, attributes=search_attributes)
+
+# Define the potentially abusable rights
+abusable_rights = {
+    'GenericAll': 'GA',
+    'GenericWrite': 'GW',
+    'WriteOwner': 'WO',
+    'WriteDacl': 'WD',
+    'WriteProperty': 'WP',
+    'CreateChild': 'CC',
+    'DeleteChild': 'DC',
+    'Self': 'SW',
+    'User-Force-Change-Password': '00299570-246d-11d0-a768-00aa006e0529',
+    'Receive-As': 'ab721a53-1e2f-11d0-9819-00aa0040529b',
+    'Send-As': 'ab721a54-1e2f-11d0-9819-00aa0040529b',
+}
+
+# Check for potentially abusable rights and notify
+for entry in connection.entries:
+    distinguished_name = entry.distinguishedName
+    sd = entry.ntSecurityDescriptor
+    dacl = sd['Dacl']
+
+    for ace in dacl:
+        ace_rights = str(ace['AceRights'])
+        rights_guid = str(ace['RightsGUID'])
+
+        for right, flag in abusable_rights.items():
+            if flag in ace_rights or rights_guid.lower() == flag.lower():
+                print(f"Abusable right detected: {right} on object {distinguished_name} for user/group {format_sid(ace['Sid'])}")
