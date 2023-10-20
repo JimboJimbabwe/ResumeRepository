@@ -1,0 +1,82 @@
+import json
+import ldap3
+from ldap3 import Server, Connection, ALL, NTLM
+from ldap3.protocol.formatters.formatters import format_sid
+
+# Replace these variables with your own values
+ldap_server = 'your.ldap.server'
+ldap_username = 'your_username@your_domain'
+ldap_password = 'your_password'
+
+# Connect to the LDAP server
+server = Server(ldap_server, get_info=ALL)
+connection = Connection(server, user=ldap_username, password=ldap_password, authentication=NTLM)
+
+if not connection.bind():
+    print("Error connecting to the LDAP server")
+    exit(1)
+
+# Define the search parameters
+search_base = 'DC=your_domain,DC=com'
+search_filter = '(objectClass=*)'
+search_attributes = ['distinguishedName', 'ntSecurityDescriptor']
+
+# Search for the objects in the domain
+connection.search(search_base=search_base, search_filter=search_filter, attributes=search_attributes)
+
+# Define the potentially abusable rights
+abusable_rights = {
+    'GenericAll': 'GA',
+    'GenericWrite': 'GW',
+    'WriteOwner': 'WO',
+    'WriteDacl': 'WD',
+    'WriteProperty': 'WP',
+    'CreateChild': 'CC',
+    'DeleteChild': 'DC',
+    'Self': 'SW',
+    'User-Force-Change-Password': '00299570-246d-11d0-a768-00aa006e0529',
+    'Receive-As': 'ab721a53-1e2f-11d0-9819-00aa0040529b',
+    'Send-As': 'ab721a54-1e2f-11d0-9819-00aa0040529b',
+    'Reset-Password': '00299571-246d-11d0-a768-00aa006e0529',
+    'DS-Replication-Get-Changes': '1131f6aa-9c07-11d1-f79f-00c04fc2dcd2',
+    'DS-Replication-Get-Changes-All': '1131f6ad-9c07-11d1-f79f-00c04fc2dcd2',
+    'DS-Replication-Get-Changes-In-Filtered-Set': '89e95b76-444d-4c62-991a-0facbeda640c',
+    'DS-Replication-Manage-Topology': '1131f6ab-9c07-11d1-f79f-00c04fc2dcd2',
+    'DS-Replication-Monitor-Topology': 'f98340fb-7c5b-4cdb-a00b-2ebdfa115a96',
+    'DS-Replication-Synchronize': '1131f6aa-9c07-11d1-f79f-00c04fc2dcd2',
+    'Add-GUID': '440820ad-65b4-11d1-a3da-0000f875ae0d',
+    'Create-Inbound-Forest-Trust': 'e2a36dc9-ae17-47c3-b58b-be34c55ba633',
+    'Do-Garbage-Collection': 'd58d5f36-0a98-4eaf-9081-45f3aed1a6a4',
+    'Enable-Per-User-Reversibly-Encrypted-Password': '05c74c5e-4deb-43b4-bd6f-f5b9a8e4d9f9',
+    'Generate-RSoP-Logging': 'b7b1b3de-ab09-4242-9e30-9980e5d322f7',
+    'Generate-RSoP-Planning': 'b7b1b3dd-ab09-4242-9e30-9980e5d322f7',
+    'Migrate-SID-History': 'ba33815a-4f93-4c76-87f3-57574bff8109',
+    'Reanimate-Tombstones': '45ec5156-db7e-47bb-b53f-dbeb2d03c40f',
+}
+
+# Process the search results
+for entry in connection.entries:
+    dn = entry['distinguishedName'].value
+    sd = entry['ntSecurityDescriptor'].value
+
+    for ace in sd['dacl']:
+        if ace['type'].name == 'ACCESS_ALLOWED_ACE_TYPE':
+            trustee_sid = format_sid(ace['trustee'])
+            rights = ace['rights']
+
+            for right_name, right_value in abusable_rights.items():
+                if rights.get(right_value):
+                    print(f"Object: {dn}")
+                    print(f"SID: {trustee_sid}")
+                    print(f"Abusable Right: {right_name}")
+                    print("------------------------------")
+
+# Close the connection
+connection.unbind()
+
+
+##This script continues the list of potentially abusable rights, 
+##and then processes the search results to check if any objects have those rights. 
+##If an object has an abusable right, it will print the object's distinguished name, 
+##the SID of the trustee, and the abusable right. Finally, the script unbinds the 
+##connection to the LDAP server.
