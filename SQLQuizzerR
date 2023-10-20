@@ -1,0 +1,193 @@
+import random
+import tkinter as tk
+from tkinter import messagebox
+
+# Define the SQL commands, purposes, and example templates
+commands = {
+    "CREATE": {
+        "questions": [
+            "create a new table with columns 'id' of type INT and 'name' of type VARCHAR(100)",
+            "design a table with an INT 'id' field and a VARCHAR(100) 'name' field"
+        ],
+        "template": "CREATE TABLE {} (id INT, name VARCHAR(100));"
+    },
+    "DROP": {
+        "questions": [
+            "delete a table",
+            "remove an entire table"
+        ],
+        "template": "DROP TABLE {};"
+    },
+    "SELECT": {
+        "questions": [
+            "fetch all data from a table where the 'id' is equal to 1",
+            "select every row from a table where the identifier 'id' is set to 1"
+        ],
+        "template": "SELECT * FROM {} WHERE id = 1;"
+    },
+    "INSERT": {
+        "questions": [
+            "insert a new record with 'id' as 1 and 'name' as 'John' into a table",
+            "add a new row to a table setting 'id' to 1 and 'name' to 'John'"
+        ],
+        "template": "INSERT INTO {} (id, name) VALUES (1, 'John');"
+    },
+    "UPDATE": {
+        "questions": [
+            "modify existing records in a table by setting the 'name' to 'Jane' where the 'id' is equal to 1",
+            "change records in a table to have the 'name' as 'Jane' when the 'id' is 1"
+        ],
+        "template": "UPDATE {} SET name = 'Jane' WHERE id = 1;"
+    },
+    "DELETE": {
+        "questions": [
+            "delete records from a table where the 'id' is equal to 1",
+            "remove entries from a table where the 'id' matches 1"
+        ],
+        "template": "DELETE FROM {} WHERE id = 1;"
+    }
+}
+
+
+# Extend the SQL commands, purposes, and example templates
+commands.update({
+    "SELECT_ALL": {
+        "questions": [
+            "fetch all records from a table",
+            "select every row from a table",
+            "retrieve all entries from a table"
+        ],
+        "template": "SELECT * FROM {};"
+    },
+    "SELECT_COLUMNS": {
+        "questions": [
+            "fetch only the 'id' and 'name' columns from a table",
+            "select the 'id' and 'name' columns from a table"
+        ],
+        "template": "SELECT id, name FROM {};"
+    },
+    "COUNT_ROWS": {
+        "questions": [
+            "count the number of rows in a table",
+            "find out how many rows a table has"
+        ],
+        "template": "SELECT COUNT(*) FROM {};"
+    },
+    "DISTINCT_VALUES": {
+        "questions": [
+            "fetch distinct 'name' values from a table",
+            "retrieve unique 'name' entries from a table"
+        ],
+        "template": "SELECT DISTINCT name FROM {};"
+    },
+})
+
+# Extend the SQL commands with questions involving data values
+commands.update({
+    "INSERT_MULTIPLE": {
+        "questions": [
+            "insert multiple records into a table with values (1, 'John') and (2, 'Jane')",
+            "add two new rows to a table with the first row having 'id' as 1 and 'name' as 'John' and the second row with 'id' as 2 and 'name' as 'Jane'"
+        ],
+        "template": "INSERT INTO {} (id, name) VALUES (1, 'John'), (2, 'Jane');"
+    },
+    "UPDATE_CONDITIONAL": {
+        "questions": [
+            "update the 'name' to 'Sam' in a table where the 'id' is 2",
+            "change the 'name' field to 'Sam' for the record with 'id' as 2 in a table"
+        ],
+        "template": "UPDATE {} SET name = 'Sam' WHERE id = 2;"
+    },
+    "DELETE_CONDITIONAL": {
+        "questions": [
+            "delete records from a table where the 'name' is 'John'",
+            "remove entries from a table with the name 'John'"
+        ],
+        "template": "DELETE FROM {} WHERE name = 'John';"
+    },
+    "SELECT_CONDITIONAL_NAME": {
+        "questions": [
+            "select records from a table where the 'name' is 'Jane'",
+            "retrieve rows from a table with the name 'Jane'"
+        ],
+        "template": "SELECT * FROM {} WHERE name = 'Jane';"
+    }
+})
+
+# ... rest of the code remains the same
+
+
+# Wordlists
+tables_wordlist = ["Users", "Orders", "Products", "Employees", "Customers"]
+
+
+def generate_quiz_question():
+    command_key, command_details = random.choice(list(commands.items()))
+    chosen_table = random.choice(tables_wordlist)
+
+    # Ensuring that we have valid questions available
+    while "questions" not in command_details or not command_details["questions"]:
+        command_key, command_details = random.choice(list(commands.items()))
+
+    # Selecting a random question variant
+    question_variant = random.choice(command_details["questions"])
+
+    question = f'Write the SQL command to {question_variant} for the table named {chosen_table}.\n'
+    correct_answer = command_details["template"].format(chosen_table)
+
+    return question, correct_answer
+
+
+
+def check_answer(correct_answer, user_input):
+    # Normalize spaces and case for better matching
+    return correct_answer.lower().strip() == user_input.lower().strip()
+
+
+def main_gui():
+    # Create main window
+    root = tk.Tk()
+    root.title("SQL Practice Quiz")
+
+    # Create and set variables
+    question_var = tk.StringVar()
+    user_input_var = tk.StringVar()
+
+    # Generate the first question
+    question, correct_answer = generate_quiz_question()
+    question_var.set(question)
+
+    # Define callback functions for the buttons
+    def check_gui_answer():
+        nonlocal correct_answer
+        user_input = user_input_var.get()
+        if check_answer(correct_answer, user_input):
+            messagebox.showinfo("Result", "Correct!")
+        else:
+            messagebox.showinfo("Result", f"Wrong. The correct command is:\n{correct_answer}")
+        # Generate next question
+        next_question()
+
+    def next_question():
+        nonlocal correct_answer
+        question, correct_answer = generate_quiz_question()
+        question_var.set(question)
+        user_input_var.set('')  # Clear the input
+
+    # Create and place widgets
+    question_label = tk.Label(root, textvariable=question_var, wraplength=400, padx=20, pady=20)
+    question_label.pack(pady=20)
+
+    user_input_entry = tk.Entry(root, textvariable=user_input_var, width=50)
+    user_input_entry.pack(pady=20)
+
+    check_button = tk.Button(root, text="Check Answer", command=check_gui_answer)
+    check_button.pack(pady=10)
+
+    next_button = tk.Button(root, text="Next Question", command=next_question)
+    next_button.pack(pady=10)
+
+    root.mainloop()
+
+if __name__ == "__main__":
+    main_gui()
